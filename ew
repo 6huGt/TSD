@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced User Tracker</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { createRoot } = ReactDOM;
+    const { Clock, Lock, User, Trash2, X, ChevronDown, ChevronUp } = lucide;
+
+    const LoginForm = ({ onLogin }) => {
+      const [inputName, setInputName] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onLogin(inputName);
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md">
+          <div className="mb-4 flex items-center">
+            <User className="w-6 h-6 text-gray-500 mr-2" />
+            <input
+              type="text"
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+              placeholder="Enter your real name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Log In
+          </button>
+        </form>
+      );
+    };
+
+    const AdminPanel = ({ visits, onClose, onWipeVisits, onAdminLogin }) => {
+      const [password, setPassword] = useState('');
+      const [isAuthenticated, setIsAuthenticated] = useState(false);
+      const [sortOrder, setSortOrder] = useState('desc');
+      const [filterName, setFilterName] = useState('');
+
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (onAdminLogin(password)) {
+          setIsAuthenticated(true);
+        } else {
+          alert('Incorrect password');
+        }
+      };
+
+      const sortedVisits = [...visits].sort((a, b) => {
+        return sortOrder === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp;
+      });
+
+      const filteredVisits = sortedVisits.filter(visit => 
+        visit.name.toLowerCase().includes(filterName.toLowerCase())
+      );
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white text-black p-8 rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Admin Panel</h2>
+              <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            {!isAuthenticated ? (
+              <form onSubmit={handleLogin} className="mb-4">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                >
+                  Login
+                </button>
+              </form>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-xl font-semibold mb-2">User Visits</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <input
+                      type="text"
+                      placeholder="Filter by name"
+                      value={filterName}
+                      onChange={(e) => setFilterName(e.target.value)}
+                      className="px-2 py-1 border rounded"
+                    />
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      className="flex items-center bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                    >
+                      Sort by time
+                      {sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                    </button>
+                  </div>
+                  <ul className="space-y-2">
+                    {filteredVisits.map((visit, index) => (
+                      <li key={index} className="bg-gray-100 p-2 rounded flex items-center justify-between">
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-2 text-gray-600" />
+                          <span>{visit.name}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {new Date(visit.timestamp).toLocaleString()}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={onWipeVisits}
+                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded flex items-center"
+                >
+                  <Trash2 className="w-5 h-5 mr-2" />
+                  Wipe All Visits
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [name, setName] = useState('');
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [showAdminPanel, setShowAdminPanel] = useState(false);
+      const [visits, setVisits] = useState([]);
+
+      useEffect(() => {
+        const storedName = localStorage.getItem('userName');
+        if (storedName) {
+          setName(storedName);
+          setIsLoggedIn(true);
+        }
+        const storedVisits = JSON.parse(localStorage.getItem('visits') || '[]');
+        setVisits(storedVisits);
+      }, []);
+
+      useEffect(() => {
+        if (isLoggedIn) {
+          const newVisit = { name: name || 'Anonymous', timestamp: Date.now() };
+          const updatedVisits = [...visits, newVisit];
+          setVisits(updatedVisits);
+          localStorage.setItem('visits', JSON.stringify(updatedVisits));
+        }
+      }, [isLoggedIn]);
+
+      const handleLogin = (inputName) => {
+        if (inputName.trim() !== '') {
+          setName(inputName);
+          setIsLoggedIn(true);
+          localStorage.setItem('userName', inputName);
+        } else {
+          setName('Anonymous');
+          setIsLoggedIn(true);
+        }
+      };
+
+      const handleAdminLogin = (password) => {
+        return password === '69Hyperion!';
+      };
+
+      const handleWipeVisits = () => {
+        setVisits([]);
+        localStorage.removeItem('visits');
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex flex-col items-center justify-center text-white p-4">
+          <h1 className="text-4xl font-bold mb-8">Advanced User Tracker</h1>
+          {!isLoggedIn ? (
+            <LoginForm onLogin={handleLogin} />
+          ) : (
+            <div className="text-center">
+              <h2 className="text-2xl mb-4">Welcome, {name}!</h2>
+              <p className="mb-2">Your visit has been logged.</p>
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <Clock className="w-5 h-5" />
+                <span>{new Date().toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+          <button
+            className="mt-8 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded flex items-center"
+            onClick={() => setShowAdminPanel(true)}
+          >
+            <Lock className="w-5 h-5 mr-2" />
+            Admin Panel
+          </button>
+          {showAdminPanel && (
+            <AdminPanel
+              visits={visits}
+              onClose={() => setShowAdminPanel(false)}
+              onWipeVisits={handleWipeVisits}
+              onAdminLogin={handleAdminLogin}
+            />
+          )}
+        </div>
+      );
+    };
+
+    createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>f
